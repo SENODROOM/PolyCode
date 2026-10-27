@@ -1,168 +1,167 @@
-# 🐍 Python Docs Hub — MERN Stack
+# PolyCode
 
-A full-stack MERN documentation website that **automatically reads your Python folder** (or exported `.txt` file), parses every `.md` and `.py` file, converts them to beautiful HTML, and displays them with live syntax-highlighted code examples.
+PolyCode is a learn-to-code platform: 100+ interactive courses across many languages, an in-browser code playground, daily challenges, certificates, an AI coding mentor (**PolyMentor**) and an AI security scanner (**PolyGuard**).
 
----
-
-## ✨ Features
-
-| Feature | Details |
-|---|---|
-| 🔄 **Auto-Ingestion** | Reads your Python folder on startup — no manual imports |
-| 🐍 **Python Syntax Highlighting** | Every `.py` file rendered with full highlighting |
-| 📝 **Markdown Rendering** | All `.md` files converted to rich HTML |
-| 🔍 **Full-Text Search** | Search across titles, content & tags |
-| 📂 **Category Browser** | Browse by folder/category |
-| 📊 **Statistics Dashboard** | Document counts, word counts, breakdowns |
-| 👀 **Live File Watching** | Changes to your Python folder auto-update the DB |
-| 📋 **Copy Code** | One-click copy on every code block |
+This repository is the **umbrella repo**. It holds no app code itself — each part lives in its own repository and is pulled in as a git submodule.
 
 ---
 
-## 🏗️ Tech Stack
+## Repositories
 
+| Folder | Repo | Stack | What it does |
+| --- | --- | --- | --- |
+| [`frontend/`](frontend) | [SENODROOM/PolyCode-Frontend](https://github.com/SENODROOM/PolyCode-Frontend) | React 19 (CRA), Monaco | Learner app — courses, playground, daily challenge, profiles, certificates, PolyMentor chat, PolyGuard scanner |
+| [`backend/`](backend) | [SENODROOM/PolyCode-Backend](https://github.com/SENODROOM/PolyCode-Backend) | Node.js, Express, MongoDB | REST API — auth (JWT + Google), documents, playground execution, challenges, chat/assistant, certificates |
+| [`PolyMentor/`](PolyMentor) | [QuantumLogicsLabs/PolyMentor](https://github.com/QuantumLogicsLabs/PolyMentor) | Python, FastAPI, Groq | AI coding tutor API + MLOps pipeline (MongoDB prompt export, LoRA fine-tuning, eval) |
+| [`PolyGuard/`](PolyGuard) | [QuantumLogicsLabs/PolyGuard](https://github.com/QuantumLogicsLabs/PolyGuard) | Python, FastAPI, PyTorch | AI code security analyzer (ML + static analysis), hosted on Hugging Face Spaces |
+
+Each submodule has its own README with full details.
+
+## Architecture
+
+```text
+Browser
+  └─ frontend (React, :3000)
+       ├─ REST ──────────────▶ backend (Express, :5000/api) ──▶ MongoDB
+       │                          └─ /api/chat/assistant
+       │                               └─ ASSISTANT_PROVIDER:
+       │                                    polymentor → PolyMentor FastAPI ──▶ Groq
+       │                                    groq       → Groq API directly
+       │                                    custom     → your own OpenAI-compatible model
+       └─ PolyGuard scans: rules in the browser + PolyGuard API (Hugging Face)
 ```
-Frontend  → React 18, React Router, ReactMarkdown, react-syntax-highlighter
-Backend   → Node.js, Express.js
-Database  → MongoDB + Mongoose
-Parser    → marked (markdown), chokidar (file watching)
-```
+
+### Live deployments
+
+| Service | URL |
+| --- | --- |
+| Frontend | https://poly-code-frontend-tau.vercel.app |
+| Backend API | https://poly-code-backend.vercel.app/api |
+| PolyMentor API | https://poly-mentor-one.vercel.app |
+| PolyGuard API | https://muhammadsaadamin-polyguard-api.hf.space |
 
 ---
 
-## 🚀 Quick Start
+## Getting started
 
 ### Prerequisites
-- Node.js ≥ 18
-- MongoDB running locally (`mongod`) or a MongoDB Atlas URI
 
-### 1. Clone / unzip this project
+- Git
+- Node.js 18+ and npm
+- Python 3.12 (only if you run PolyMentor or PolyGuard locally)
+- A MongoDB instance (local `mongod` or MongoDB Atlas)
+- A [Groq API key](https://console.groq.com/keys) for the AI mentor
+
+### 1. Clone with submodules
 
 ```bash
-cd python-docs-mern
+git clone --recurse-submodules https://github.com/SENODROOM/PolyCode.git
+cd PolyCode
 ```
+
+Already cloned without them? Run `git submodule update --init --recursive`.
+
+**Contributors:** run the setup script to point each submodule at your own fork (`origin`) with the org repo as `upstream`. It can auto-fork for you, or set up plain clones.
+
+```bash
+./setup.sh        # macOS / Linux / Git Bash
+.\setup.ps1       # Windows PowerShell
+```
+
+The setup script only configures git remotes — install dependencies in the next step.
 
 ### 2. Install dependencies
 
 ```bash
-npm install          # installs concurrently at root
-npm run install:all  # installs backend + frontend deps
+npm install            # root tooling (concurrently)
+npm run install:all    # backend + frontend
 ```
 
 ### 3. Configure environment
 
 ```bash
 cp backend/.env.example backend/.env
-# Edit backend/.env if needed (default: mongodb://127.0.0.1:27017/python_docs)
+cp frontend/.env.example frontend/.env
 ```
 
-### 4. Place your Python documentation
+Minimum settings:
 
-**Option A — Python folder** *(recommended)*
-Place (or symlink) your Python folder next to `python-docs-mern/`:
+| File | Variable | Value |
+| --- | --- | --- |
+| `backend/.env` | `MONGODB_URI` | Your MongoDB connection string |
+| `backend/.env` | `JWT_SECRET` | Any long random string |
+| `backend/.env` | `ASSISTANT_PROVIDER` | `polymentor` (default), `groq` or `custom` |
+| `backend/.env` | `POLYMENTOR_API_URL` | PolyMentor URL — deployed above, or `http://127.0.0.1:8000` locally |
+| `backend/.env` | `GROQ_API_KEY`, `GROQ_MODEL` | Needed when `ASSISTANT_PROVIDER=groq` (e.g. `openai/gpt-oss-120b`) |
+| `frontend/.env` | `REACT_APP_API_URL` | `http://localhost:5000/api` |
+| `frontend/.env` | `REACT_APP_GOOGLE_CLIENT_ID` | Same Google OAuth client ID as the backend `GOOGLE_CLIENT_ID` |
 
-```
-parent-folder/
-├── Python/          ← your existing Python folder
-└── python-docs-mern/
-```
+See each `.env.example` for optional features (Google Drive prompt export, Pinecone RAG, PolyGuard remote scanning).
 
-**Option B — Exported .txt file**
-Copy your `Python.txt` export into the data folder:
+> **Groq models:** Groq has retired `llama-3.3-70b-versatile` and `llama-3.1-8b-instant`. Use `openai/gpt-oss-120b` (main) and `openai/gpt-oss-20b` (fallback). An old model name in any `.env` — or in a deployment's environment variables — causes a `404 model_not_found` error in chat.
 
-```bash
-mkdir -p backend/../data
-cp /path/to/Python.txt data/Python.txt
-```
-
-### 5. Start the app
+### 4. Run
 
 ```bash
 npm run dev
 ```
 
-This starts:
-- **Backend** on http://localhost:5000 (auto-ingests all docs)
-- **Frontend** on http://localhost:3000
+This starts both apps:
 
-Open http://localhost:3000 🎉
+- Frontend — http://localhost:3000
+- Backend — http://localhost:5000 (API docs at http://localhost:5000/api-docs)
 
----
+Or run them separately with `npm run dev:backend` and `npm run dev:frontend`.
 
-## 📁 Project Structure
-
-```
-python-docs-mern/
-├── package.json          ← root scripts (concurrently)
-├── data/                 ← put Python.txt here (Option B)
-│
-├── backend/
-│   ├── server.js         ← Express app + auto-ingestion entry point
-│   ├── models/
-│   │   └── Document.js   ← Mongoose schema
-│   ├── routes/
-│   │   └── documents.js  ← REST API routes
-│   └── utils/
-│       └── fileParser.js ← Markdown/Python parser + HTML converter
-│
-└── frontend/
-    └── src/
-        ├── App.js
-        ├── App.css        ← Dark theme design system
-        ├── components/
-        │   ├── Navbar.js
-        │   ├── Sidebar.js
-        │   ├── DocCard.js
-        │   ├── CodeBlock.js       ← Syntax highlighted code
-        │   └── MarkdownRenderer.js
-        └── pages/
-            ├── HomePage.js
-            ├── DocumentPage.js   ← Full doc view
-            ├── CategoryPage.js
-            ├── SearchPage.js
-            └── StatsPage.js
-```
-
----
-
-## 🔌 API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/documents` | List docs (supports `?category=`, `?search=`, `?fileType=`, `?page=`, `?limit=`) |
-| GET | `/api/documents/stats` | Total counts, by category, by file type |
-| GET | `/api/documents/categories` | Distinct category list |
-| GET | `/api/documents/:id` | Single document with full content + code blocks |
-
----
-
-## ⚙️ How Auto-Ingestion Works
-
-On startup, the server checks in this order:
-
-1. **`../Python/` folder** — walks the whole tree, parses every `.md` and `.py` file
-2. **`./data/Python.txt`** — parses the exported monolithic dump file
-3. **Existing MongoDB data** — uses what's already in the database
-
-Files are upserted by path, so re-running never creates duplicates. If a real folder is found, **chokidar** watches it for live changes.
-
----
-
-## 🎨 Customization
-
-- **Theme colors** — edit CSS variables in `frontend/src/App.css`
-- **Add file types** — edit `SUPPORTED_EXTENSIONS` in `backend/utils/fileParser.js`
-- **Add categories** — edit `CATEGORY_META` in `frontend/src/utils/categories.js`
-
----
-
-## 🛠️ Production Build
+### 5. (Optional) Run PolyMentor locally
 
 ```bash
-npm run build          # builds React to frontend/build/
-NODE_ENV=production npm start  # serves static files from Express
+cd PolyMentor
+python -m venv .venv
+source .venv/bin/activate          # Windows: .\.venv\Scripts\Activate.ps1
+pip install -e .
+cp .env.example .env               # set GROQ_API_KEY
+uvicorn src.api.app:app --reload --port 8000
 ```
+
+Then set `POLYMENTOR_API_URL=http://127.0.0.1:8000` in `backend/.env`. See [PolyMentor/README.md](PolyMentor/README.md) for the training pipeline.
 
 ---
 
-*Built for the Python Development Hub — March 2026*
+## Root scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run install:all` | `npm install` in `backend/` and `frontend/` |
+| `npm run dev` | Backend (nodemon) + frontend dev server together |
+| `npm run dev:backend` | Backend only |
+| `npm run dev:frontend` | Frontend only |
+| `npm run build` | Production build of the frontend (`frontend/build/`) |
+| `npm start` | Start the backend in production mode |
+
+## Working with submodules
+
+```bash
+# Pull the latest commit of every submodule
+git submodule update --remote --merge
+
+# Commit the new submodule pointers in the umbrella repo
+git add frontend backend PolyMentor PolyGuard
+git commit -m "chore: update submodules"
+```
+
+Make code changes **inside** the submodule folder, commit and push them there first, then commit the updated pointer here.
+
+The `.github/workflows/update-submodules.yml` workflow also bumps submodule pointers automatically on a schedule.
+
+## Deployment
+
+- **Frontend** and **backend** deploy separately on Vercel (each has its own `vercel.json`).
+- **PolyMentor** deploys to Vercel (`src.api.app:app`).
+- **PolyGuard** deploys to Hugging Face Spaces.
+
+Set each service's environment variables in its hosting dashboard — local `.env` files are not uploaded. After changing a variable, redeploy for it to take effect.
+
+## License
+
+See [LICENSE](LICENSE).
